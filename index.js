@@ -3,7 +3,10 @@ const express =require("express")
 const app=express()
 const PORT=process.env.PORT ||3000
 const connectDB=require("./src/config/db")
+const authRoutes=require("./src/routes/auth.routes")
 
+app.use(express.json())
+app.use("/api/auth", authRoutes)
 
 app.get("/",(req,res)=>{
     res.status(200).json({ message: "server running" })
