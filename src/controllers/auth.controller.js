@@ -41,4 +41,13 @@ const login=async(req,res)=>{
     }
 };
 
-module.exports = { register, login };
+const me=async(req,res)=>{
+    try {
+        const user = await userModel.findById(req.user.id).select("-password");
+        res.status(200).json({ message: "User found", user });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching user", error });
+    }
+};
+
+module.exports = { register, login, me };
