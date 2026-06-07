@@ -1,9 +1,22 @@
 const expenseModel = require("../models/expense.model");
 
-const createExpense = async (req, res) => {
+const createExpense = async (req, res, next) => {
   try {
     const { amount, category, description } = req.body;
     const user = req.user.id;
+
+    if (!amount || !category) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+    if (amount <= 0 || isNaN(amount)) {
+      return res
+        .status(400)
+        .json({ message: "Amount must be a valid number greater than zero" });
+    }
+    if (category.trim().length <= 0) {
+      return res.status(400).json({ message: "Category must not be empty" });
+    }
+
     const expense = await expenseModel.create({
       amount,
       category,
@@ -12,65 +25,77 @@ const createExpense = async (req, res) => {
     });
     res.status(201).json({ message: "Expense created successfully", expense });
   } catch (error) {
-    res.status(500).json({ message: "Error creating expense" });
+    next(error);
   }
 };
 
-const getExpenses = async (req, res) => {
+const getExpenses = async (req, res, next) => {
   try {
     const user = req.user.id;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
     const skip = (page - 1) * limit;
-    const expenses = await expenseModel.find({ user }).skip(skip).limit(limit);
+    const expenses = await expenseModel
+      .find({ user })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
     res
       .status(200)
       .json({ message: "Expenses fetched successfully", expenses });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching expenses" });
+    next(error);
   }
 };
 
-const updateExpenses = async (req, res) => {
+const updateExpense = async (req, res, next) => {
   try {
     const user = req.user.id;
     const expenseid = req.params.id;
+    const allowedFields = ["amount", "category", "description"];
+    const cleanedData = {};
+    for (const key in req.body) {
+      if (allowedFields.includes(key)) {
+        cleanedData[key] = req.body[key];
+      }
+    }
+    if (Object.keys(cleanedData).length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No valid fields provided for update" });
+    }
 
-    const updatedexpenses = await expenseModel.findOneAndUpdate(
+    const updatedexpense = await expenseModel.findOneAndUpdate(
       { _id: expenseid, user },
-      { $set: req.body },
+      { $set: cleanedData },
       { new: true },
     );
-    if (!updatedexpenses) {
-      return res
-        .status(404)
-        .json({ message: "Expenses not found unable to update expenses" });
+    if (!updatedexpense) {
+      return res.status(404).json({ message: "Expense not found " });
     }
     res.status(200).json({
-      message: "Expenses updateExpenses successfully",
-      updatedexpenses,
+      message: "Expense updated successfully",
+      updatedexpense,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error updateExpenses expenses" });
+    next(error);
   }
 };
-const deleteExpenses = async (req, res) => {
+const deleteExpense = async (req, res, next) => {
   try {
     const user = req.user.id;
     const expenseid = req.params.id;
-    const deletedexpenses = await expenseModel.findOneAndDelete({
+    const deletedexpense = await expenseModel.findOneAndDelete({
       _id: expenseid,
       user,
     });
-    if (!deletedexpenses) {
-      return res
-        .status(404)
-        .json({ message: "Expenses not found unable to delete expenses" });
+    if (!deletedexpense) {
+      return res.status(404).json({ message: "Expense not found" });
     }
-    res.status(200).json({ message: "Expenses deleted successfully" });
+    res.status(200).json({ message: "Expense deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting expenses" });
+    next(error);
   }
 };
 
-module.exports = { createExpense, getExpenses, updateExpenses, deleteExpenses };
+module.exports = { createExpense, getExpenses, updateExpense, deleteExpense };
