@@ -1,5 +1,5 @@
 const expenseModel = require("../models/expense.model");
-
+const {isValidAmount} = require("../utils/validation");
 const createExpense = async (req, res, next) => {
   try {
     const { amount, category, description } = req.body;
@@ -8,7 +8,7 @@ const createExpense = async (req, res, next) => {
     if (!amount || !category) {
       return res.status(400).json({ message: "All fields are required" });
     }
-    if (amount <= 0 || isNaN(amount)) {
+    if (!isValidAmount(Number(amount))) {
       return res
         .status(400)
         .json({ message: "Amount must be a valid number greater than zero" });
@@ -57,6 +57,11 @@ const updateExpense = async (req, res, next) => {
     for (const key in req.body) {
       if (allowedFields.includes(key)) {
         cleanedData[key] = req.body[key];
+        if (key === "amount" && !isValidAmount(Number(cleanedData[key]))) {
+          return res
+            .status(400)
+            .json({ message: "Amount must be a valid number greater than zero" });
+        }
       }
     }
     if (Object.keys(cleanedData).length === 0) {
